@@ -10,17 +10,10 @@ __global__ void copymat_device(const float *input, float *output, int n)
 {
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
-	int largeur_matrice = blockDim.x * gridDim.x;
-	int indice_lin = (largeur_matrice * y_matrice) + x_matrice; // addresse
 
-	//__shared__ float s_data[DIM_PORTION];
 	if (x_matrice < n && y_matrice < n)
 	{
-		output[indice_lin] = input[indice_lin];
-	}
-	else
-	{
-		return;
+		output[(x_matrice * n) + y_matrice] = input[(y_matrice * n) + x_matrice];
 	}
 }
 
@@ -72,14 +65,22 @@ int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est l
 
 int main(int argc, char **argv)
 {
-
-	if ((argc != 2) || (atoi(argv[1]) < 1))
+	int n(0);
+	bool affiche(false);
+	if ((argc < 2))
 	{
-		std::cout << " il faut un seul argument ! " << std::endl;
+		std::cout << " il faut entrer un seul argument (taille matrice) " << std::endl;
 		exit(-1);
 	}
+	if (argv[1] != NULL)
+	{
+		n = atoi(argv[1]);
+	}
+	if (argv[2] != NULL)
+	{
+		affiche = true;
+	}
 
-	int n = atoi(argv[1]);
 	size_t size = n * n * sizeof(float);
 
 	// Matrices CPU
@@ -105,6 +106,7 @@ int main(int argc, char **argv)
 	// Definition de la taille des blocs et de la grille
 	dim3 threadsPerBlock(DIM_PORTION, DIM_PORTION);
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
+	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 
 	copymat_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
 	checkCudaErrors(cudaPeekAtLastError());
@@ -131,14 +133,17 @@ int main(int argc, char **argv)
 	float octets_echanges(2 * size / pow(10, 9));
 
 	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
-	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms); // A compléter); */
+	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
 
-	afficher_matrice(h_A, n);
+	if (affiche == true)
+	{
 
-	/* 	int i1(2), j1(6);
-	std::cout << "h_A[" << i1 << " , " << j1 << "]=" << h_A[i1 * n + j1] << std::endl;
-	std::cout << "h_B(copie)[" << i1 << " , " << j1 << "]=" << h_B[i1 * n + j1] << std::endl;
+		std::cout << " A : " << std::endl;
+		afficher_matrice(h_A, n);
 
- */
+		std::cout << " B : " << std::endl;
+		afficher_matrice(h_B, n);
+	}
+
 	return 0;
 }

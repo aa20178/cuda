@@ -8,19 +8,21 @@
 
 __global__ void copymat_device(const float *input, float *output, int n)
 {
+	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION];
+
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
-	int largeur_matrice = blockDim.x * gridDim.x;
-	int indice_lin = (largeur_matrice * y_matrice) + x_matrice; // addresse
 
-	//__shared__ float s_data[DIM_PORTION];
 	if (x_matrice < n && y_matrice < n)
 	{
-		output[indice_lin] = input[indice_lin];
+		matrice_shared[threadIdx.y][threadIdx.x] = input[y_matrice * n + x_matrice];
 	}
-	else
+
+	__syncthreads();
+
+	if (x_matrice < n && y_matrice < n)
 	{
-		return;
+		output[y_matrice * n + x_matrice] = matrice_shared[threadIdx.x][threadIdx.y];
 	}
 }
 
@@ -73,15 +75,14 @@ int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est l
 int main(int argc, char **argv)
 {
 
-	if ((argc != 2) || (atoi(argv[1]) < 1))
+	int n = atoi(argv[1]);
+	if ((argc != 2) || (n < 2))
 	{
-		std::cout << " il faut un seul argument ! " << std::endl;
+		std::cout << " il faut entrer un seul argument (taille matrice) " << std::endl;
 		exit(-1);
 	}
 
-	int n = atoi(argv[1]);
 	size_t size = n * n * sizeof(float);
-
 	// Matrices CPU
 	float *h_A = nullptr, *h_B = nullptr;
 	// Matrices GPU
@@ -105,6 +106,7 @@ int main(int argc, char **argv)
 	// Definition de la taille des blocs et de la grille
 	dim3 threadsPerBlock(DIM_PORTION, DIM_PORTION);
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
+	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 
 	copymat_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
 	checkCudaErrors(cudaPeekAtLastError());
@@ -132,5 +134,12 @@ int main(int argc, char **argv)
 
 	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
 	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
+
+	std::cout << " A : " << std::endl;
+	afficher_matrice(h_A, n);
+
+	std::cout << " B : " << std::endl;
+	afficher_matrice(h_B, n);
+
 	return 0;
 }
