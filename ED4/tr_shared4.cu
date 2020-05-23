@@ -3,6 +3,7 @@
 #include <helper_cuda.h>
 
 #define DIM_PORTION 32
+#define LIGNES_BLOC 8
 
 // Code GPU
 
@@ -10,19 +11,24 @@ __global__ void transpose_device(const float *input, float *output, int n)
 {
 	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION];
 
+	int largeur_matrice = blockDim.x * gridDim.x;
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
+	int indice_lin = 0;
 
-	if (x_matrice < n && y_matrice < n)
+	for (int j = 0; j < DIM_PORTION; j += LIGNES_BLOC)
 	{
-		matrice_shared[threadIdx.y][threadIdx.x] = input[y_matrice * n + x_matrice];
-	}
+		if (x_matrice < n && y_matrice < n)
+		{
+			matrice_shared[threadIdx.y][threadIdx.x] = input[(j + y_matrice) * n + x_matrice];
+		}
 
-	__syncthreads();
+		__syncthreads();
 
-	if (x_matrice < n && y_matrice < n)
-	{
-		output[y_matrice * n + x_matrice] = matrice_shared[threadIdx.x][threadIdx.y];
+		if (x_matrice < n && y_matrice < n)
+		{
+			output[(y_matrice + j) * n + x_matrice] = matrice_shared[threadIdx.x][threadIdx.y];
+		}
 	}
 }
 
@@ -55,6 +61,22 @@ float verify(const float *A, const float *B, int n)
 	return error;
 }
 
+int compter_occurences_degalite(float *h_A, float *h_B, int n) // n c'est le côté de la mat
+{
+	int compteur = 0;
+
+	for (int i = 0; i < n; i++)
+	{
+		for (int j = 0; j < n; j++)
+		{
+			if (h_A[i * n + j] == h_B[i * n + j])
+			{
+				compteur++;
+			}
+		}
+	}
+	return compteur;
+}
 int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est le côté de la mat
 {
 	int compteur = 0;
@@ -63,7 +85,7 @@ int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est l
 	{
 		for (int j = 0; j < n; j++)
 		{
-			if (h_A[i * n + j] != h_B[i * n + j])
+			if (h_A[i * n + j] == h_B[i * n + j])
 			{
 				compteur++;
 			}
@@ -71,7 +93,6 @@ int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est l
 	}
 	return compteur;
 }
-
 int main(int argc, char **argv)
 {
 
@@ -80,10 +101,10 @@ int main(int argc, char **argv)
 
 	if (argc < 2)
 	{
-		std::cout <<argc<< " il faut entrer un argument (taille matrice) " << std::endl;
+		std::cout << argc << " il faut entrer un argument (taille matrice) " << std::endl;
 		exit(-1);
 	}
-	if ( argv[1] != NULL && atoi(argv[1])>1 )
+	if (argv[1] != NULL && atoi(argv[1]) > 1)
 	{
 		n = atoi(argv[1]);
 	}
@@ -91,7 +112,6 @@ int main(int argc, char **argv)
 	{
 		affiche = true;
 	}
-
 
 	size_t size = n * n * sizeof(float);
 	// Matrices CPU
@@ -119,7 +139,7 @@ int main(int argc, char **argv)
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
 	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 
-	copymat_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
+	transpose_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
 	checkCudaErrors(cudaPeekAtLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
 
@@ -146,7 +166,6 @@ int main(int argc, char **argv)
 	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
 	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
 
-
 	if (affiche == true)
 	{
 
@@ -156,7 +175,7 @@ int main(int argc, char **argv)
 		std::cout << " B : " << std::endl;
 		afficher_matrice(h_B, n);
 	}
-
+	std::cout << " nombre d'éléments inchangés (transposée VS originale)  : " << compter_occurences_degalite(h_A, h_B, n) << " et on devrait en avoir " << n <<" (taille de la diagonale). " <<std::endl;
 
 	if (d_A)
 		cudaFree(d_A);

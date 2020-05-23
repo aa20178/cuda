@@ -8,14 +8,15 @@
 
 __global__ void transpose_device(const float *input, float *output, int n)
 {
-	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION];
+	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION+1];
 
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
 
 	if (x_matrice < n && y_matrice < n)
 	{
-		matrice_shared[threadIdx.y][threadIdx.x] = input[y_matrice * n + x_matrice];
+		matrice_shared[threadIdx.y][threadIdx.x] = input[y_matrice * n + x_matrice]; 
+		// on charge en shm à l'adresse [threadIdx.y][threadIdx.x] l'element (x,y)
 	}
 
 	__syncthreads();
@@ -119,7 +120,7 @@ int main(int argc, char **argv)
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
 	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 
-	copymat_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
+	transpose_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
 	checkCudaErrors(cudaPeekAtLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
 

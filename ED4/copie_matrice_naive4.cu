@@ -3,29 +3,31 @@
 #include <helper_cuda.h>
 
 #define DIM_PORTION 32
-
+#define LIGNES_BLOC 8
 // Code GPU
 
-__global__ void transpose_device(const float *input, float *output, int n)
+__global__ void copymat_device(const float *input, float *output, int n)
 {
-	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION];
-
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
+	int largeur_matrice = blockDim.x * gridDim.x;
+	int indice_lin =0;
 
-	if (x_matrice < n && y_matrice < n)
+	//__shared__ float s_data[DIM_PORTION];
+	for (int j = 0; j < DIM_PORTION; j += LIGNES_BLOC)
 	{
-		matrice_shared[threadIdx.y][threadIdx.x] = input[y_matrice * n + x_matrice];
-	}
+			int indice_lin = (largeur_matrice * (y_matrice+j)) + x_matrice; // addresse
 
-	__syncthreads();
-
-	if (x_matrice < n && y_matrice < n)
-	{
-		output[y_matrice * n + x_matrice] = matrice_shared[threadIdx.x][threadIdx.y];
+		if (x_matrice < n && (y_matrice+j) < n) //j ou pas?
+		{
+			output[indice_lin] = input[indice_lin];
+		}
+		else
+		{
+			return;
+		}
 	}
 }
-
 // Code CPU
 void afficher_matrice(float *A, int n)
 {
@@ -75,25 +77,15 @@ int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est l
 int main(int argc, char **argv)
 {
 
-	int n = 0;
-	bool affiche(false);
-
-	if (argc < 2)
+	if ((argc != 2) || (atoi(argv[1]) < 1))
 	{
-		std::cout <<argc<< " il faut entrer un argument (taille matrice) " << std::endl;
+		std::cout << " il faut un seul argument ! " << std::endl;
 		exit(-1);
 	}
-	if ( argv[1] != NULL && atoi(argv[1])>1 )
-	{
-		n = atoi(argv[1]);
-	}
-	if (argv[2] != NULL)
-	{
-		affiche = true;
-	}
 
-
+	int n = atoi(argv[1]);
 	size_t size = n * n * sizeof(float);
+
 	// Matrices CPU
 	float *h_A = nullptr, *h_B = nullptr;
 	// Matrices GPU
@@ -117,7 +109,6 @@ int main(int argc, char **argv)
 	// Definition de la taille des blocs et de la grille
 	dim3 threadsPerBlock(DIM_PORTION, DIM_PORTION);
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
-	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 
 	copymat_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
 	checkCudaErrors(cudaPeekAtLastError());
@@ -134,7 +125,7 @@ int main(int argc, char **argv)
 	const int nb = 10;
 	checkCudaErrors(cudaEventRecord(start, 0));
 	for (int i = 0; i < nb; i++)
-		transpose_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
+		copymat_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
 	checkCudaErrors(cudaEventRecord(stop, 0));
 	checkCudaErrors(cudaEventSynchronize(stop));
 	float t_ms;
@@ -145,28 +136,5 @@ int main(int argc, char **argv)
 
 	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
 	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
-
-
-	if (affiche == true)
-	{
-
-		std::cout << " A : " << std::endl;
-		afficher_matrice(h_A, n);
-
-		std::cout << " B : " << std::endl;
-		afficher_matrice(h_B, n);
-	}
-
-
-	if (d_A)
-		cudaFree(d_A);
-	if (d_B)
-		cudaFree(d_B);
-
-	// Deallocation de la memoire CPU
-	if (h_A)
-		delete[] h_A;
-	if (h_B)
-		delete[] h_B;
 	return 0;
 }
