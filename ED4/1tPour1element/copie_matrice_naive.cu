@@ -1,10 +1,5 @@
-#include <iostream>
-#include <cuda_runtime.h>
-#include <helper_cuda.h>
-
 #define DIM_PORTION 32
-
-// Code GPU
+#include "../matrice.h"
 
 __global__ void copymat_device(const float *input, float *output, int n)
 {
@@ -25,50 +20,9 @@ __global__ void copymat_device(const float *input, float *output, int n)
 }
 
 // Code CPU
-void afficher_matrice(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			std::cout << A[i * n + j] << "  ";
-		}
-		std::cout << std::endl;
-	}
-}
 
-void genmat(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			A[i * n + j] = rand() / (float)RAND_MAX;
-}
-float verify(const float *A, const float *B, int n)
-{
-	float error = 0;
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			error = std::max(error, abs(A[i * n + j] - B[i * n + j]));
 
-	return error;
-}
 
-int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est le côté de la mat
-{
-	int compteur = 0;
-
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			if (h_A[i * n + j] != h_B[i * n + j])
-			{
-				compteur++;
-			}
-		}
-	}
-	return compteur;
-}
 
 int main(int argc, char **argv)
 {
