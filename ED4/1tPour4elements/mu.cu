@@ -1,4 +1,4 @@
-#include <iostream>
+#include "../matrice.h"
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
@@ -27,68 +27,12 @@ __global__ void mult_device(const float *A, const float *B, float *output, int n
 	}
 }
 
-// Code CPU
-void afficher_matrice(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			std::cout << A[i * n + j] << "  ";
-		}
-		std::cout << std::endl;
-	}
-}
- void multiplier_matrice(float *A, float *B, float *C, int n)
-{
-	for (int i = 0; i < n * n; i++)
-	{
-		for (int j = 0; j < n * n; j++)
-		{
-			C[i + j*n] = 0;
-			for (int k = 0; k < n * n; k++)
-			{
-				C[i+j*n] += A[i+ k*n] * B[k+(j*n)];
-			}
-		}
-	}
-} 
-
-void genmat(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			A[i * n + j] = rand() / (float)RAND_MAX;
-}
-float verify(const float *A, const float *B, int n)
-{
-	float error = 0;
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			error = std::max(error, abs(A[i * n + j] - B[i * n + j]));
-
-	return error;
-}
-
 int main(int argc, char **argv)
 {
 
-	int n = 0;
+	int n(0);
 	bool affiche(false);
-
-	if (argc < 2)
-	{
-		std::cout << argc << " il faut entrer un argument (taille matrice) " << std::endl;
-		exit(-1);
-	}
-	if (argv[1] != NULL && atoi(argv[1]) > 1)
-	{
-		n = atoi(argv[1]);
-	}
-	if (argv[2] != NULL)
-	{
-		affiche = true;
-	}
+	user_input(affiche, n, argc, argv);
 
 	size_t size = n * n * sizeof(float);
 	// Matrices CPU
@@ -111,10 +55,10 @@ int main(int argc, char **argv)
 	srand(time(NULL));
 	genmat(h_A, n);
 	genmat(h_B, n);
-	multiplier_matrice(h_A, h_B, h_temoin,  n);
+	multiplier_matrice(h_A, h_B, h_temoin, n);
 
-		// Copie de la matrice A dans la mémoire GPU
-		checkCudaErrors(cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice));
+	// Copie de la matrice A dans la mémoire GPU
+	checkCudaErrors(cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice));
 	checkCudaErrors(cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice));
 
 	// Definition de la taille des blocs et de la grille
@@ -122,7 +66,7 @@ int main(int argc, char **argv)
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
 	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 
-	mult_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B,d_res, n);
+	mult_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_res, n);
 	checkCudaErrors(cudaPeekAtLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
 
@@ -138,7 +82,7 @@ int main(int argc, char **argv)
 	const int nb = 10;
 	checkCudaErrors(cudaEventRecord(start, 0));
 	for (int i = 0; i < nb; i++)
-		mult_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_res,n);
+		mult_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_res, n);
 	checkCudaErrors(cudaEventRecord(stop, 0));
 	checkCudaErrors(cudaEventSynchronize(stop));
 	float t_ms;
@@ -147,31 +91,7 @@ int main(int argc, char **argv)
 	t_ms /= 1000;
 	float octets_echanges(2 * size / pow(10, 9));
 
-	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
-	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
+	affichage_resultats_du_kernel(h_A, h_B, h_res, n, t_ms, octets_echanges, affiche);
 
-	if (affiche == true)
-	{
-
-		std::cout << " A : " << std::endl;
-		afficher_matrice(h_A, n);
-
-		std::cout << " B : " << std::endl;
-		afficher_matrice(h_B, n);
-
-		std::cout << " B : " << std::endl;
-		afficher_matrice(h_res, n);
-	}
-
-	if (d_A)
-		cudaFree(d_A);
-	if (d_B)
-		cudaFree(d_B);
-
-	// Deallocation de la memoire CPU
-	if (h_A)
-		delete[] h_A;
-	if (h_B)
-		delete[] h_B;
 	return 0;
 }

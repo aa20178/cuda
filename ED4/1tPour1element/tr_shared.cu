@@ -1,4 +1,4 @@
-#include <iostream>
+#include "../matrice.h"
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
@@ -32,19 +32,7 @@ int main(int argc, char **argv)
 	int n = 0;
 	bool affiche(false);
 
-	if (argc < 2)
-	{
-		std::cout << argc << " il faut entrer un argument (taille matrice) " << std::endl;
-		exit(-1);
-	}
-	if (argv[1] != NULL && atoi(argv[1]) > 1)
-	{
-		n = atoi(argv[1]);
-	}
-	if (argv[2] != NULL)
-	{
-		affiche = true;
-	}
+	user_input(affiche,n,argc,argv);
 
 	size_t size = n * n * sizeof(float);
 	// Matrices CPU
@@ -72,7 +60,7 @@ int main(int argc, char **argv)
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
 	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 
-	copymat_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
+	transpose_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
 	checkCudaErrors(cudaPeekAtLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
 
@@ -96,30 +84,7 @@ int main(int argc, char **argv)
 	t_ms /= 1000;
 	float octets_echanges(2 * size / pow(10, 9));
 
-	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
-	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
-
-	if (affiche == true)
-	{
-
-		std::cout << " A : " << std::endl;
-		afficher_matrice(h_A, n);
-
-		std::cout << " B : " << std::endl;
-		afficher_matrice(h_B, n);
-	}
-
-	void free_cpu(float *h_A)
-	{
-		if (h_A)
-			delete[] h_A;
-	}
-
-	void free_gpu(float *h_A)
-	{
-		if (h_A)
-			cudaFree(h_A);
-	}
+	affichage_resultats_du_kernel(h_A, h_B, n, t_ms, octets_echanges, affiche);
 
 	free_gpu(d_A);
 	free_gpu(d_B);

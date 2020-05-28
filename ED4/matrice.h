@@ -1,8 +1,28 @@
 #ifndef MATRICE_H_ /* Include guard */
 #define MATRICE_H_
 #include <iostream>
-#include <cuda_runtime.h>
-#include <helper_cuda.h>
+
+
+void transpose_matrice(float *A, float *B, int n, int m);
+void multiplier_matrice_naive(float *A, float *B, float *C, int n);
+void multiplier_matrice(float *A, float *B, float *C, int nb_lignesA, int nb_colonnesA, int nb_lignesB, int nb_colonnesB);
+
+void user_input(bool affiche,int n,int argc, char **argv)
+{
+	if (argc < 2)
+	{
+		std::cout << argc << " il faut entrer un argument (taille matrice) " << std::endl;
+		exit(-1);
+	}
+	if (argv[1] != NULL && atoi(argv[1]) > 1)
+	{
+		n = atoi(argv[1]);
+	}
+	if (argv[2] != NULL)
+	{
+		affiche = true;
+	}
+}
 
 void genmat(float *A, int n)
 {
@@ -51,6 +71,11 @@ void multiplier_matrice_naive(float *A, float *B, float *C, int n)
 		}
 	}
 }
+void multiplier_matrice(float *A, float *B, float *C, int n)
+{
+	 multiplier_matrice( A, B, C,  n,  n,  n, n);
+
+}
 
 void multiplier_matrice(float *A, float *B, float *C, int nb_lignesA, int nb_colonnesA, int nb_lignesB, int nb_colonnesB)
 {
@@ -88,11 +113,16 @@ void soustraction_2_matrices(float *A, float *B, float *C, int n)
 	}
 }
 
-void transpose_matrice(float *A, float *B, int n)
+void transpose_matrice_naive(float *A, float *B, int n)
 {
 	for (int i = 0; i < n; i++)
 		for (int j = 0; j < n; j++)
 			B[(n * j) + i] = A[(n * i) + j];
+}
+
+void transpose_matrice(float *A, float *B, int n)
+{
+	transpose_matrice(A, B, n, n);
 }
 
 void transpose_matrice(float *A, float *B, int n, int m)
@@ -165,7 +195,7 @@ void affichage_resultats_du_kernel(float *matrice1, float *matrice2, float *matr
 		std::cout << " entree 1 : " << std::endl;
 		afficher_matrice(matrice1, taille_des_matrices_carree);
 
-		std::cout << " resultat : " << std::endl;
+		std::cout << " entree 2 : " << std::endl;
 		afficher_matrice(matrice2, taille_des_matrices_carree);
 		std::cout << " resultat : " << std::endl;
 		afficher_matrice(matrice_res, taille_des_matrices_carree);

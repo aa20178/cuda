@@ -1,4 +1,4 @@
-#include <iostream>
+#include "../matrice.h"
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
@@ -30,68 +30,14 @@ __global__ void transpose_device(const float *input, float *output, int n)
 }
 
 // Code CPU
-void afficher_matrice(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			std::cout << A[i * n + j] << "  ";
-		}
-		std::cout << std::endl;
-	}
-}
 
-void genmat(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			A[i * n + j] = rand() / (float)RAND_MAX;
-}
-float verify(const float *A, const float *B, int n)
-{
-	float error = 0;
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			error = std::max(error, abs(A[i * n + j] - B[i * n + j]));
-
-	return error;
-}
-
-int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est le côté de la mat
-{
-	int compteur = 0;
-
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			if (h_A[i * n + j] != h_B[i * n + j])
-			{
-				compteur++;
-			}
-		}
-	}
-	return compteur;
-}
 
 int main(int argc, char **argv)
 {
 	int n(0);
 	bool affiche(false);
-	if ((argc < 2))
-	{
-		std::cout << " il faut entrer un seul argument (taille matrice) " << std::endl;
-		exit(-1);
-	}
-	if (argv[1] != NULL)
-	{
-		n = atoi(argv[1]);
-	}
-	if (argv[2] != NULL)
-	{
-		affiche = true;
-	}
+		user_input(affiche,n,argc,argv);
+
 
 	size_t size = n * n * sizeof(float);
 
@@ -144,19 +90,7 @@ int main(int argc, char **argv)
 	t_ms /= 1000;
 	float octets_echanges(2 * size / pow(10, 9));
 
-	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
-	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
-
-	if (affiche == true)
-	{
-
-		std::cout << " A : " << std::endl;
-		afficher_matrice(h_A, n);
-
-		std::cout << " B : " << std::endl;
-		afficher_matrice(h_B, n);
-	}
-	std::cout << " nombre d'éléments inchangés (transposée VS originale)  : " << (n * n) - compter_occurences_de_difference(h_A, h_B, n) << " et on devrait en avoir " << n <<" (diagonale). " <<std::endl;
+	affichage_resultats_du_kernel(h_A, h_B, n, t_ms, octets_echanges, affiche);
 
 	return 0;
 }

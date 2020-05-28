@@ -1,4 +1,4 @@
-#include <iostream>
+#include "../matrice.h"
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
@@ -21,24 +21,11 @@ int main(int argc, char **argv)
 {
 	int n(0);
 	bool affiche(false);
-	if ((argc < 2))
-	{
-		std::cout << " il faut entrer un seul argument (taille matrice) " << std::endl;
-		exit(-1);
-	}
-	if (argv[1] != NULL)
-	{
-		n = atoi(argv[1]);
-	}
-	if (argv[2] != NULL)
-	{
-		affiche = true;
-	}
+	user_input(affiche,n,argc,argv);
 
 	size_t size = n * n * sizeof(float);
-
 	// Matrices CPU
-	float *h_A = nullptr, *h_B = nullptr,*h_B_by_cpu = nullptr;
+	float *h_A = nullptr, *h_B = nullptr, *h_B_by_cpu = nullptr;
 	// Matrices GPU
 	float *d_A = nullptr, *d_B = nullptr;
 
@@ -87,18 +74,7 @@ int main(int argc, char **argv)
 	t_ms /= 1000;
 	float octets_echanges(2 * size / pow(10, 9));
 
-	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
-	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
-
-	if (affiche == true)
-	{
-
-		std::cout << " A : " << std::endl;
-		afficher_matrice(h_A, n);
-
-		std::cout << " transpose GPU : " << std::endl;
-		afficher_matrice(h_B, n);
-	}
+	affichage_resultats_du_kernel(h_A, h_B, n, t_ms, octets_echanges, affiche);
 
 	return 0;
 }

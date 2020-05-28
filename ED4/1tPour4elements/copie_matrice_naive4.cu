@@ -1,4 +1,4 @@
-#include <iostream>
+#include "../matrice.h"
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
@@ -10,15 +10,14 @@ __global__ void copymat_device(const float *input, float *output, int n)
 {
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
-	int largeur_matrice = blockDim.x * gridDim.x;
-	int indice_lin =0;
+	int indice_lin = (n * y_matrice) + x_matrice; // addresse
 
 	//__shared__ float s_data[DIM_PORTION];
 	for (int j = 0; j < DIM_PORTION; j += LIGNES_BLOC)
 	{
-			int indice_lin = (largeur_matrice * (y_matrice+j)) + x_matrice; // addresse
+		int indice_lin = (n * (y_matrice + j)) + x_matrice; // addresse
 
-		if (x_matrice < n && (y_matrice+j) < n) //j ou pas?
+		if (x_matrice < n && (y_matrice + j) < n) //j ou pas?
 		{
 			output[indice_lin] = input[indice_lin];
 		}
@@ -29,61 +28,14 @@ __global__ void copymat_device(const float *input, float *output, int n)
 	}
 }
 // Code CPU
-void afficher_matrice(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			std::cout << A[i * n + j] << "  ";
-		}
-		std::cout << std::endl;
-	}
-}
-
-void genmat(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			A[i * n + j] = rand() / (float)RAND_MAX;
-}
-float verify(const float *A, const float *B, int n)
-{
-	float error = 0;
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			error = std::max(error, abs(A[i * n + j] - B[i * n + j]));
-
-	return error;
-}
-
-int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est le côté de la mat
-{
-	int compteur = 0;
-
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			if (h_A[i * n + j] != h_B[i * n + j])
-			{
-				compteur++;
-			}
-		}
-	}
-	return compteur;
-}
 
 int main(int argc, char **argv)
 {
 
-	if ((argc != 2) || (atoi(argv[1]) < 1))
-	{
-		std::cout << " il faut un seul argument ! " << std::endl;
-		exit(-1);
-	}
+	int n(0);
+	bool affiche(false);
+	user_input(affiche, n, argc, argv);
 
-	int n = atoi(argv[1]);
 	size_t size = n * n * sizeof(float);
 
 	// Matrices CPU
@@ -134,7 +86,7 @@ int main(int argc, char **argv)
 	t_ms /= 1000;
 	float octets_echanges(2 * size / pow(10, 9));
 
-	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
-	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
+	affichage_temps_execution_et_bande_passante_gpu(t_ms, octets_echanges);
+
 	return 0;
 }

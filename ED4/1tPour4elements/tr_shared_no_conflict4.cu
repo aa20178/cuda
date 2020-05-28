@@ -1,4 +1,4 @@
-#include <iostream>
+#include "../matrice.h"
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
@@ -8,14 +8,14 @@
 
 __global__ void transpose_device(const float *input, float *output, int n)
 {
-	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION+1];
+	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION + 1];
 
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
 
 	if (x_matrice < n && y_matrice < n)
 	{
-		matrice_shared[threadIdx.y][threadIdx.x] = input[y_matrice * n + x_matrice]; 
+		matrice_shared[threadIdx.y][threadIdx.x] = input[y_matrice * n + x_matrice];
 		// on charge en shm à l'adresse [threadIdx.y][threadIdx.x] l'element (x,y)
 	}
 
@@ -27,72 +27,12 @@ __global__ void transpose_device(const float *input, float *output, int n)
 	}
 }
 
-// Code CPU
-void afficher_matrice(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			std::cout << A[i * n + j] << "  ";
-		}
-		std::cout << std::endl;
-	}
-}
-
-void genmat(float *A, int n)
-{
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			A[i * n + j] = rand() / (float)RAND_MAX;
-}
-float verify(const float *A, const float *B, int n)
-{
-	float error = 0;
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++)
-			error = std::max(error, abs(A[i * n + j] - B[i * n + j]));
-
-	return error;
-}
-
-int compter_occurences_de_difference(float *h_A, float *h_B, int n) // n c'est le côté de la mat
-{
-	int compteur = 0;
-
-	for (int i = 0; i < n; i++)
-	{
-		for (int j = 0; j < n; j++)
-		{
-			if (h_A[i * n + j] != h_B[i * n + j])
-			{
-				compteur++;
-			}
-		}
-	}
-	return compteur;
-}
-
 int main(int argc, char **argv)
 {
 
-	int n = 0;
+	int n(0);
 	bool affiche(false);
-
-	if (argc < 2)
-	{
-		std::cout <<argc<< " il faut entrer un argument (taille matrice) " << std::endl;
-		exit(-1);
-	}
-	if ( argv[1] != NULL && atoi(argv[1])>1 )
-	{
-		n = atoi(argv[1]);
-	}
-	if (argv[2] != NULL)
-	{
-		affiche = true;
-	}
-
+	user_input(affiche, n, argc, argv);
 
 	size_t size = n * n * sizeof(float);
 	// Matrices CPU
@@ -144,30 +84,14 @@ int main(int argc, char **argv)
 	t_ms /= 1000;
 	float octets_echanges(2 * size / pow(10, 9));
 
-	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
-	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
+	affichage_resultats_du_kernel(h_A, h_B, n, t_ms, octets_echanges, affiche);
 
-
-	if (affiche == true)
-	{
-
-		std::cout << " A : " << std::endl;
-		afficher_matrice(h_A, n);
-
-		std::cout << " B : " << std::endl;
-		afficher_matrice(h_B, n);
-	}
-
-
-	if (d_A)
-		cudaFree(d_A);
-	if (d_B)
-		cudaFree(d_B);
+	free_gpu(d_A);
+	free_gpu(d_B);
 
 	// Deallocation de la memoire CPU
-	if (h_A)
-		delete[] h_A;
-	if (h_B)
-		delete[] h_B;
+	free_cpu(h_A);
+	free_cpu(h_B);
+
 	return 0;
 }

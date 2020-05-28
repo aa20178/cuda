@@ -1,12 +1,13 @@
 #define DIM_PORTION 32
 #include "../matrice.h"
+#include <cuda_runtime.h>
+#include <helper_cuda.h>
 
 __global__ void copymat_device(const float *input, float *output, int n)
 {
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
-	int largeur_matrice = blockDim.x * gridDim.x;
-	int indice_lin = (largeur_matrice * y_matrice) + x_matrice; // addresse
+	int indice_lin = (n * y_matrice) + x_matrice; // addresse
 
 	//__shared__ float s_data[DIM_PORTION];
 	if (x_matrice < n && y_matrice < n)
@@ -21,19 +22,13 @@ __global__ void copymat_device(const float *input, float *output, int n)
 
 // Code CPU
 
-
-
-
 int main(int argc, char **argv)
 {
 
-	if ((argc != 2) || (atoi(argv[1]) < 1))
-	{
-		std::cout << " il faut un seul argument ! " << std::endl;
-		exit(-1);
-	}
+	int n(0);
+	bool affiche(false);
+	user_input(affiche,n,argc,argv);
 
-	int n = atoi(argv[1]);
 	size_t size = n * n * sizeof(float);
 
 	// Matrices CPU
@@ -82,9 +77,9 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaEventElapsedTime(&t_ms, start, stop));
 	t_ms /= nb;
 	t_ms /= 1000;
-	float octets_echanges(2 * size / pow(10, 9));
 
-	printf("Temps d'exécution du Kernel : %e (ms)\n", t_ms);
-	printf("Bande passante GPU: %e GO/s\n", octets_echanges / t_ms);
+	float octets_echanges(2 * size / pow(10, 9));
+	affichage_temps_execution_et_bande_passante_gpu(t_ms, octets_echanges);
+
 	return 0;
 }
