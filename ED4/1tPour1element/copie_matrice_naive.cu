@@ -9,10 +9,9 @@ __global__ void copymat_device(const float *input, float *output, int n)
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
 	int indice_lin = (n * y_matrice) + x_matrice; // addresse
 
-	//__shared__ float s_data[DIM_PORTION];
 	if (x_matrice < n && y_matrice < n)
 	{
-		output[indice_lin] = input[indice_lin];
+		//output[indice_lin] = input[indice_lin];
 	}
 	else
 	{
