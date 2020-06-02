@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice));
 
 	// Definition de la taille des blocs et de la grille
-	dim3 threadsPerBlock(DIM_PORTION, DIM_PORTION);
+	dim3 threadsPerBlock(DIM_PORTION, LIGNES_BLOC);
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
 	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 
@@ -91,6 +91,11 @@ int main(int argc, char **argv)
 	float octets_echanges(2 * size / pow(10, 9));
 
 	affichage_resultats_du_kernel(h_A, h_B, n, t_ms, octets_echanges, affiche);
+	free_gpu(d_A);
+	free_gpu(d_B);
 
+	// Deallocation de la memoire CPU
+	free_cpu(h_A);
+	free_cpu(h_B);
 	return 0;
 }

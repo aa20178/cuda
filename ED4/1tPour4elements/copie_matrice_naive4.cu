@@ -15,7 +15,7 @@ __global__ void copymat_device(const float *input, float *output, int n)
 	//__shared__ float s_data[DIM_PORTION];
 	for (int j = 0; j < DIM_PORTION; j += LIGNES_BLOC)
 	{
-		int indice_lin = (n * (y_matrice + j)) + x_matrice; // addresse
+		 indice_lin = (n * (y_matrice + j)) + x_matrice; // addresse
 
 		if (x_matrice < n && (y_matrice + j) < n) //j ou pas?
 		{
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice));
 
 	// Definition de la taille des blocs et de la grille
-	dim3 threadsPerBlock(DIM_PORTION, DIM_PORTION);
+	dim3 threadsPerBlock(DIM_PORTION, LIGNES_BLOC);
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
 
 	copymat_device<<<numBlocks, threadsPerBlock>>>(d_A, d_B, n);
@@ -86,7 +86,14 @@ int main(int argc, char **argv)
 	t_ms /= 1000;
 	float octets_echanges(2 * size / pow(10, 9));
 
-	affichage_temps_execution_et_bande_passante_gpu(t_ms, octets_echanges);
+	affichage_performance(t_ms, octets_echanges);
+	free_gpu(d_A);
+	free_gpu(d_B);
 
+	// Deallocation de la memoire CPU
+	free_cpu(h_A);
+	free_cpu(h_B);
+
+	
 	return 0;
 }

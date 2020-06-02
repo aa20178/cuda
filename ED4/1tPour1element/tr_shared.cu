@@ -8,21 +8,21 @@
 
 __global__ void transpose_device(const float *input, float *output, int n)
 {
-	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION];
+	__shared__ float matrice_shared[DIM_PORTION][DIM_PORTION + 1];
 
 	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
 	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
 
 	if (x_matrice < n && y_matrice < n)
 	{
-		matrice_shared[threadIdx.y][threadIdx.x] = input[y_matrice * n + x_matrice];
+		matrice_shared[threadIdx.x][threadIdx.y] = input[y_matrice * n + x_matrice];
 	}
 
 	__syncthreads();
 
 	if (x_matrice < n && y_matrice < n)
 	{
-		output[y_matrice * n + x_matrice] = matrice_shared[threadIdx.x][threadIdx.y];
+		output[y_matrice * n + x_matrice] = matrice_shared[threadIdx.y][threadIdx.x];
 	}
 }
 
@@ -31,7 +31,6 @@ int main(int argc, char **argv)
 
 	int n = 0;
 	bool affiche(false);
-
 	user_input(affiche,n,argc,argv);
 
 	size_t size = n * n * sizeof(float);

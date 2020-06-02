@@ -1,6 +1,4 @@
-#include "../matrice.h"
-#include <cuda_runtime.h>
-#include <helper_cuda.h>
+#include "matrice.h"
 
 #define DIM_PORTION 32
 
@@ -8,22 +6,38 @@
 
 __global__ void mult_device(const float *A, const float *B, float *output, int n)
 {
-	__shared__ float shared_A[DIM_PORTION][DIM_PORTION];
-	__shared__ float shared_B[DIM_PORTION][DIM_PORTION];
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int j = blockIdx.y * blockDim.y + threadIdx.y;
+	__shared__ float A_shared[DIM_PORTION][DIM_PORTION];
+	__shared__ float B_shared[DIM_PORTION][DIM_PORTION];
+	__shared__ float C_shared[DIM_PORTION][DIM_PORTION];
 
-	int x_matrice = blockIdx.x * blockDim.x + threadIdx.x;
-	int y_matrice = blockIdx.y * blockDim.y + threadIdx.y;
-
-	if (x_matrice < n && y_matrice < n)
+	if (i < n && j < n)
 	{
-		shared_A[threadIdx.y][threadIdx.x] = A[y_matrice * n + x_matrice];
-	}
+		A_shared[threadIdx.x][threadIdx.y] = A[j * n + (i)];
+		__syncthreads();
+		B_shared[threadIdx.x][threadIdx.y] = B[(j)*n + i];
+		__syncthreads();
+		C_shared[threadIdx.x][threadIdx.y] = 0;
+		for (int q = 0; q < 32; q = q + 1)
+		{
+			C_shared[threadIdx.x][threadIdx.y] = C_shared[threadIdx.x][threadIdx.y] + (A_shared[q][threadIdx.y] * B_shared[threadIdx.x][q]);
+		}
+		__syncthreads();
 
-	__syncthreads();
+		output[(j)*n + i] = C_shared[threadIdx.x][threadIdx.y];
 
-	if (x_matrice < n && y_matrice < n)
-	{
-		output[y_matrice * n + x_matrice] = shared_A[threadIdx.x][threadIdx.y];
+		/* 		for (int k = 0; k < n; k = k + DIM_PORTION)
+		{
+			A_shared[threadIdx.x][threadIdx.y] = A[j * n + (i + k)];
+			__syncthreads();
+			B_shared[threadIdx.x][threadIdx.y] = B[(i + k) * n + j];
+			__syncthreads();
+			for (int q = 0; q < DIM_PORTION; q = q + 1)
+			{
+				C_shared[threadIdx.x][threadIdx.y] = C_shared[threadIdx.x][threadIdx.y] + (A_shared[q][threadIdx.y] * B_shared[threadIdx.x][q]);
+			}
+		} */
 	}
 }
 
@@ -90,8 +104,18 @@ int main(int argc, char **argv)
 	t_ms /= nb;
 	t_ms /= 1000;
 	float octets_echanges(2 * size / pow(10, 9));
+	multiplier_matrice(h_A, h_B, h_temoin, n);
 
-	affichage_resultats_du_kernel(h_A, h_B, h_res, n, t_ms, octets_echanges, affiche);
+	affichage_resultats_du_kernel(h_A, h_B, h_res, h_temoin, n, t_ms, octets_echanges, affiche);
+
+	free_gpu(d_A);
+	free_gpu(d_B);
+
+	// Deallocation de la memoire CPU
+	free_cpu(h_A);
+	free_cpu(h_B);
+	free_cpu(h_temoin);
+	free_cpu(h_res);
 
 	return 0;
 }

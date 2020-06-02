@@ -18,14 +18,14 @@ __global__ void transpose_device(const float *input, float *output, int n)
 	{
 		if (x_matrice < n && y_matrice < n)
 		{
-			matrice_shared[threadIdx.y][threadIdx.x] = input[(j + y_matrice) * n + x_matrice];
+			matrice_shared[threadIdx.x][threadIdx.y] = input[(j + y_matrice) * n + x_matrice];
 		}
 
 		__syncthreads();
 
 		if (x_matrice < n && y_matrice < n)
 		{
-			output[(y_matrice + j) * n + x_matrice] = matrice_shared[threadIdx.x][threadIdx.y];
+			output[(y_matrice + j) * n + x_matrice] = matrice_shared[threadIdx.y][threadIdx.x];
 		}
 	}
 }
@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 	checkCudaErrors(cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice));
 
 	// Definition de la taille des blocs et de la grille
-	dim3 threadsPerBlock(DIM_PORTION, DIM_PORTION);
+	dim3 threadsPerBlock(DIM_PORTION, LIGNES_BLOC);
 	dim3 numBlocks(ceil(n / (float)threadsPerBlock.x), ceil(n / (float)threadsPerBlock.x));
 	std::cout << "bx: " << numBlocks.x << " by: " << numBlocks.y << "\n";
 

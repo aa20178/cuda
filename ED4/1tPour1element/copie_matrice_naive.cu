@@ -1,7 +1,6 @@
 #define DIM_PORTION 32
 #include "../matrice.h"
-#include <cuda_runtime.h>
-#include <helper_cuda.h>
+
 
 __global__ void copymat_device(const float *input, float *output, int n)
 {
@@ -11,7 +10,7 @@ __global__ void copymat_device(const float *input, float *output, int n)
 
 	if (x_matrice < n && y_matrice < n)
 	{
-		//output[indice_lin] = input[indice_lin];
+		output[indice_lin] = input[indice_lin];
 	}
 	else
 	{
@@ -78,7 +77,13 @@ int main(int argc, char **argv)
 	t_ms /= 1000;
 
 	float octets_echanges(2 * size / pow(10, 9));
-	affichage_temps_execution_et_bande_passante_gpu(t_ms, octets_echanges);
+	affichage_performance(t_ms, octets_echanges);
+	free_gpu(d_A);
+	free_gpu(d_B);
+
+	// Deallocation de la memoire CPU
+	free_cpu(h_A);
+	free_cpu(h_B);
 
 	return 0;
 }
